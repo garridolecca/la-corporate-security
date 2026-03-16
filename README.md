@@ -34,8 +34,11 @@ LA County, built with **ArcGIS Maps SDK 5.0** and **Canvas rendering**.
 
 ## Data
 
-Source data: National incident layer (11.5M records) published as a hosted feature
-service on ArcGIS Online, filtered to LA County bounding box.
+Source data: [All Global Incidents - Dataminer](https://healthgis.maps.arcgis.com/home/item.html?id=37e227a96bc54bdd874ec231bb1a8029)
+(11.5M records) published as a hosted feature service on ArcGIS Online, filtered
+to LA County bounding box.
+
+- **Feature Service URL**: https://services2.arcgis.com/cPVqgcKAQtE6xCja/arcgis/rest/services/All_Global_Incidents_Dataminer/FeatureServer
 
 ## License
 
