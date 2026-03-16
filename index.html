@@ -29,9 +29,6 @@
       font-family: var(--calcite-font-family, "Inter", system-ui, sans-serif);
     }
 
-    calcite-shell { --calcite-color-brand: var(--brand); }
-    calcite-navigation { --calcite-navigation-background: var(--bg-glass); --calcite-navigation-border-color: var(--border); }
-
     #viewDiv { position: absolute; inset: 0; z-index: 1; }
     #lensCanvas { position: absolute; inset: 0; z-index: 10; pointer-events: none; }
     #interactionLayer { position: absolute; inset: 0; z-index: 15; cursor: none; }
@@ -73,7 +70,6 @@
       padding: 10px 14px; gap: 8px; pointer-events: none;
     }
     .leg-title { font-size: 9px; color: var(--text-3); text-transform: uppercase; letter-spacing: 1.2px; }
-    .leg-sub { font-size: 10px; color: var(--text-2); font-weight: 600; margin-bottom: 3px; }
     .leg-row { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
     .leg-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
     .leg-label { font-size: 9px; color: var(--text-3); }
@@ -110,61 +106,15 @@
       z-index: 9999; transition: opacity 0.5s;
     }
     .load-screen.off { opacity: 0; pointer-events: none; }
+    .load-text { color: var(--text-2); font-size: 14px; }
 
     .esri-ui { display: none !important; }
-
-    .key-overlay {
-      position: fixed; inset: 0; background: rgba(4,6,14,0.92);
-      backdrop-filter: blur(12px); z-index: 99999;
-      display: flex; align-items: center; justify-content: center; transition: opacity 0.4s;
-    }
-    .key-overlay.off { opacity: 0; pointer-events: none; }
-    .key-box {
-      background: var(--bg-glass); border: 1px solid var(--border); border-radius: 16px;
-      padding: 32px 36px; max-width: 440px; width: 90%; text-align: center;
-    }
-    .key-box h2 { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 8px; }
-    .key-box p { font-size: 13px; color: var(--text-2); line-height: 1.5; margin-bottom: 20px; }
-    .key-box a { color: var(--brand); text-decoration: none; }
-    .key-box a:hover { text-decoration: underline; }
-    .key-input {
-      width: 100%; padding: 10px 14px; border-radius: 8px;
-      border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04);
-      color: #fff; font-size: 13px; font-family: monospace; outline: none;
-      margin-bottom: 14px; transition: border-color 0.2s;
-    }
-    .key-input:focus { border-color: var(--brand); }
-    .key-input::placeholder { color: var(--text-3); }
-    .key-submit {
-      padding: 10px 28px; border: none; border-radius: 8px;
-      background: var(--brand); color: #fff; font-size: 13px; font-weight: 600;
-      cursor: pointer; transition: opacity 0.2s;
-    }
-    .key-submit:hover { opacity: 0.85; }
-    .key-error { color: #ef4444; font-size: 12px; margin-top: 10px; display: none; }
-    .key-saved { font-size: 11px; color: var(--text-3); margin-top: 12px; }
   </style>
 </head>
 <body class="calcite-mode-dark">
 
-  <!-- API Key Dialog -->
-  <div class="key-overlay" id="keyOverlay">
-    <div class="key-box">
-      <h2>ArcGIS API Key</h2>
-      <p>
-        This app uses ArcGIS basemaps which require a free developer API key.<br>
-        Get yours at <a href="https://developers.arcgis.com/sign-up/" target="_blank" rel="noopener">developers.arcgis.com</a>
-      </p>
-      <input class="key-input" id="keyInput" type="password" placeholder="Paste your API key here..." autocomplete="off" />
-      <br>
-      <button class="key-submit" id="keySubmit">Start Exploring</button>
-      <div class="key-error" id="keyError">Please enter a valid API key</div>
-      <div class="key-saved">Your key is stored locally in your browser only &mdash; never sent to any server.</div>
-    </div>
-  </div>
-
   <div class="load-screen" id="loader">
-    <calcite-loader text="Loading incident data..." type="indeterminate"></calcite-loader>
+    <div class="load-text">Loading incident data...</div>
   </div>
 
   <div id="viewDiv"></div>
@@ -232,47 +182,14 @@
 
   <script type="module">
     // ═══════════════════════════════════════
-    // API KEY
+    // ArcGIS 5.0 — no API key needed (using open basemap)
     // ═══════════════════════════════════════
-    const KEY_STORAGE = "arcgis_api_key_cs";
-
-    function getStoredKey() { return localStorage.getItem(KEY_STORAGE); }
-
-    async function waitForApiKey() {
-      const stored = getStoredKey();
-      if (stored) return stored;
-      const overlay = document.getElementById("keyOverlay");
-      const input = document.getElementById("keyInput");
-      const btn = document.getElementById("keySubmit");
-      const errEl = document.getElementById("keyError");
-      overlay.classList.remove("off");
-      return new Promise(resolve => {
-        function submit() {
-          const val = input.value.trim();
-          if (!val || val.length < 10) { errEl.style.display = "block"; return; }
-          errEl.style.display = "none";
-          localStorage.setItem(KEY_STORAGE, val);
-          overlay.classList.add("off");
-          resolve(val);
-        }
-        btn.addEventListener("click", submit);
-        input.addEventListener("keydown", e => { if (e.key === "Enter") submit(); });
-      });
-    }
-
-    const apiKey = await waitForApiKey();
-
-    // ═══════════════════════════════════════
-    // ArcGIS 5.0
-    // ═══════════════════════════════════════
-    const [Map, MapView, Point, esriConfig] = await $arcgis.import([
+    const [Map, MapView, Basemap, WebTileLayer] = await $arcgis.import([
       "@arcgis/core/Map.js",
       "@arcgis/core/views/MapView.js",
-      "@arcgis/core/geometry/Point.js",
-      "@arcgis/core/config.js"
+      "@arcgis/core/Basemap.js",
+      "@arcgis/core/layers/WebTileLayer.js"
     ]);
-
-    esriConfig.apiKey = apiKey;
 
     // ═══════════════════════════════════════
     // CONFIG
@@ -302,25 +219,21 @@
     const SRC_L = ["Samdesk","Dataminr","DataCapable","IRWIN","Geospark","Seerist","Factal"];
 
     // ═══════════════════════════════════════
-    // LOAD DATA
+    // LOAD BINARY DATA (~3.4 MB vs 9 MB JSON)
     // ═══════════════════════════════════════
-    const resp = await fetch("data.json");
-    const raw = await resp.json();
-    const N = raw.pts.length;
+    const buf = await (await fetch("data.bin")).arrayBuffer();
+    const dv = new DataView(buf);
+    const N = dv.getUint32(0, true);
 
-    const lonArr = new Float32Array(N);
-    const latArr = new Float32Array(N);
-    const catArr = new Uint8Array(N);
-    const srcArr = new Uint8Array(N);
+    const lonOff = 4;
+    const latOff = lonOff + N * 4;
+    const catOff = latOff + N * 4;
+    const srcOff = catOff + N;
 
-    for (let i = 0; i < N; i++) {
-      const p = raw.pts[i];
-      lonArr[i] = p[0];
-      latArr[i] = p[1];
-      catArr[i] = p[2];
-      srcArr[i] = p[3];
-    }
-    raw.pts = null; // Free memory
+    const lonArr = new Float32Array(buf, lonOff, N);
+    const latArr = new Float32Array(buf, latOff, N);
+    const catArr = new Uint8Array(buf, catOff, N);
+    const srcArr = new Uint8Array(buf, srcOff, N);
 
     // ═══════════════════════════════════════
     // STATE
@@ -329,9 +242,19 @@
     let mx = -999, my = -999, mOn = false, aR = 0;
 
     // ═══════════════════════════════════════
-    // MAP
+    // MAP — CartoDB dark basemap (no API key)
     // ═══════════════════════════════════════
-    const map = new Map({ basemap: "dark-gray-vector" });
+    const darkBasemap = new Basemap({
+      baseLayers: [
+        new WebTileLayer({
+          urlTemplate: "https://{subDomain}.basemaps.cartocdn.com/dark_all/{level}/{col}/{row}.png",
+          subDomains: ["a", "b", "c", "d"],
+          copyright: "Map tiles by Carto, under CC BY 3.0. Data by OpenStreetMap, under ODbL."
+        })
+      ]
+    });
+
+    const map = new Map({ basemap: darkBasemap });
 
     const view = new MapView({
       container: "viewDiv", map,
@@ -357,31 +280,34 @@
     addEventListener("resize", rz); rz();
 
     // ═══════════════════════════════════════
-    // PROJECTION — manual for 343K perf
+    // PROJECTION — manual Web Mercator for 343K perf
     // ═══════════════════════════════════════
     const sxArr = new Float32Array(N);
     const syArr = new Float32Array(N);
     const visArr = new Uint8Array(N);
 
+    // Pre-compute Web Mercator x/y for each point (these never change)
+    const DEG2RAD = Math.PI / 180;
+    const EARTH_R = 6378137;
+    const wmxArr = new Float32Array(N);
+    const wmyArr = new Float32Array(N);
+    for (let i = 0; i < N; i++) {
+      wmxArr[i] = lonArr[i] * EARTH_R * DEG2RAD;
+      const latRad = latArr[i] * DEG2RAD;
+      wmyArr[i] = EARTH_R * Math.log(Math.tan(Math.PI / 4 + latRad / 2));
+    }
+
     function proj() {
       const ext = view.extent;
       if (!ext) return;
       const W = innerWidth, H = innerHeight;
-      // Web Mercator projection math
-      const xmin = ext.xmin, xmax = ext.xmax, ymin = ext.ymin, ymax = ext.ymax;
-      const sx = W / (xmax - xmin);
-      const sy = H / (ymax - ymin);
-      const DEG2RAD = Math.PI / 180;
-      const EARTH_R = 6378137;
+      const sx = W / (ext.xmax - ext.xmin);
+      const sy = H / (ext.ymax - ext.ymin);
+      const xmin = ext.xmin, ymax = ext.ymax;
 
       for (let i = 0; i < N; i++) {
-        // Convert lon/lat to Web Mercator
-        const wmx = lonArr[i] * EARTH_R * DEG2RAD;
-        const latRad = latArr[i] * DEG2RAD;
-        const wmy = EARTH_R * Math.log(Math.tan(Math.PI / 4 + latRad / 2));
-
-        const px = (wmx - xmin) * sx;
-        const py = (ymax - wmy) * sy;
+        const px = (wmxArr[i] - xmin) * sx;
+        const py = (ymax - wmyArr[i]) * sy;
         sxArr[i] = px;
         syArr[i] = py;
         visArr[i] = (px > -50 && px < W + 50 && py > -50 && py < H + 50) ? 1 : 0;
@@ -409,7 +335,7 @@
       }
 
       // Tally arrays for radial bars
-      const inCatSrc = new Int32Array(35); // 5 cats x 7 srcs
+      const inCatSrc = new Int32Array(35);
       let totalIn = 0;
 
       // Pass 1: Dim points (outside lens) — batched by category
@@ -472,7 +398,6 @@
     // RADIAL BARS — source sub-bars per category
     // ═══════════════════════════════════════
     function radBars(px, py, R, cs) {
-      // Find active categories (those with any count inside lens)
       const ac = [];
       for (let c = 0; c < 5; c++) {
         if (aCat >= 0 && c !== aCat) continue;
@@ -482,7 +407,6 @@
       }
       if (!ac.length) return;
 
-      // Find global max for normalization
       let gm = 0;
       for (let i = 0; i < 35; i++) if (cs[i] > gm) gm = cs[i];
       if (!gm) return;
@@ -491,7 +415,6 @@
       const cp = 0.08;
       const bs = R + RING_GAP;
 
-      // Find active sources
       const asSrcs = [];
       for (let s = 0; s < 7; s++) {
         if (aSrc >= 0 && s !== aSrc) continue;
@@ -536,20 +459,17 @@
           }
         });
 
-        // Category label
         const lr = bs + BAR_MAX + 24;
         cx.font = "700 10px Inter,system-ui";
         cx.fillStyle = `rgba(${cc[0]},${cc[1]},${cc[2]},0.85)`;
         cx.textAlign = "center"; cx.textBaseline = "middle";
         cx.fillText(CAT_L[ck], px + Math.cos(sm) * lr, py + Math.sin(sm) * lr);
 
-        // Category total
         let ct = 0;
         for (let s = 0; s < 7; s++) ct += cs[ck * 7 + s];
         cx.font = "500 9px Inter,system-ui"; cx.fillStyle = "rgba(255,255,255,0.30)";
         cx.fillText(ct, px + Math.cos(sm) * (lr + 14), py + Math.sin(sm) * (lr + 14));
 
-        // Separator
         if (ci < ac.length - 1) {
           const sa = se + cp / 2;
           cx.strokeStyle = "rgba(255,255,255,0.05)"; cx.lineWidth = 1;
@@ -560,17 +480,15 @@
         }
       });
 
-      // Source legend inside lens (when showing all sources)
       if (aSrc < 0 && nS > 1) {
         const ly2 = py + R * 0.45;
-        const tw = Math.min(nS, 4) * 55;
-        let x = px - tw / 2;
         const rows = nS > 4 ? 2 : 1;
         const perRow = Math.ceil(nS / rows);
 
         for (let row = 0; row < rows; row++) {
-          let rx = px - (Math.min(perRow, nS - row * perRow) * 55) / 2;
-          for (let j = row * perRow; j < Math.min((row + 1) * perRow, nS); j++) {
+          const count = Math.min(perRow, nS - row * perRow);
+          let rx = px - (count * 55) / 2;
+          for (let j = row * perRow; j < row * perRow + count; j++) {
             const si = asSrcs[j];
             const sc = SRC_C[si];
             cx.fillStyle = `rgba(${sc[0]},${sc[1]},${sc[2]},0.7)`;
@@ -653,9 +571,6 @@
       setTimeout(() => document.getElementById("loader").classList.add("off"), 600);
     }, err => {
       console.error("View init error:", err);
-      localStorage.removeItem(KEY_STORAGE);
-      alert("Invalid API key. The page will reload so you can enter a valid one.");
-      location.reload();
     });
   </script>
 </body>
