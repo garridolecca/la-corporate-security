@@ -8,7 +8,7 @@
   <!-- Preload data immediately — downloads in parallel with ArcGIS SDK -->
   <script>window._dp = fetch("data.bin").then(r => r.arrayBuffer());</script>
 
-  <!-- ArcGIS 4.31 AMD (lighter initial load than 5.0 ES modules) -->
+  <!-- ArcGIS 4.31 AMD -->
   <link rel="stylesheet" href="https://js.arcgis.com/4.31/esri/themes/dark/main.css">
   <script src="https://js.arcgis.com/4.31/"></script>
 
@@ -32,6 +32,76 @@
       font-family: "Avenir Next", "Inter", system-ui, sans-serif;
     }
 
+    /* ── LOGIN ── */
+    .login-overlay {
+      position: fixed; inset: 0; background: var(--bg-deep);
+      z-index: 100000; display: flex; align-items: center; justify-content: center;
+      transition: opacity 0.5s;
+    }
+    .login-overlay.off { opacity: 0; pointer-events: none; }
+    .login-box {
+      background: var(--bg-glass); border: 1px solid var(--border); border-radius: 16px;
+      padding: 40px 44px; max-width: 400px; width: 90%; text-align: center;
+      backdrop-filter: blur(20px);
+    }
+    .login-box h2 { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+    .login-box .login-sub { font-size: 13px; color: var(--text-2); margin-bottom: 24px; }
+    .login-field {
+      width: 100%; padding: 10px 14px; border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04);
+      color: #fff; font-size: 13px; font-family: inherit; outline: none;
+      margin-bottom: 12px; transition: border-color 0.2s;
+    }
+    .login-field:focus { border-color: var(--brand); }
+    .login-field::placeholder { color: var(--text-3); }
+    .login-submit {
+      width: 100%; padding: 11px; border: none; border-radius: 8px;
+      background: var(--brand); color: #fff; font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: opacity 0.2s; margin-top: 4px;
+    }
+    .login-submit:hover { opacity: 0.85; }
+    .login-error { color: #ef4444; font-size: 12px; margin-top: 10px; display: none; }
+    .login-shield { font-size: 48px; margin-bottom: 12px; filter: grayscale(0.3); }
+
+    /* ── WELCOME / INTRO ── */
+    .welcome-overlay {
+      position: fixed; inset: 0; background: var(--bg-deep);
+      z-index: 99999; display: none; overflow-y: auto;
+      transition: opacity 0.5s;
+    }
+    .welcome-overlay.vis { display: flex; }
+    .welcome-overlay.off { opacity: 0; pointer-events: none; }
+    .welcome-wrap {
+      max-width: 680px; width: 90%; margin: 40px auto; padding-bottom: 60px;
+    }
+    .welcome-wrap h1 { font-size: 28px; font-weight: 800; color: #fff; margin-bottom: 6px; }
+    .welcome-wrap .wsub { font-size: 14px; color: var(--text-2); margin-bottom: 28px; }
+    .welcome-wrap h3 { font-size: 15px; font-weight: 700; color: #fff; margin: 20px 0 8px; }
+    .welcome-wrap p, .welcome-wrap li {
+      font-size: 13px; color: var(--text-2); line-height: 1.7;
+    }
+    .welcome-wrap ul { padding-left: 18px; margin-bottom: 12px; }
+    .welcome-wrap li { margin-bottom: 4px; }
+    .src-table { width: 100%; border-collapse: collapse; margin: 10px 0 16px; }
+    .src-table th, .src-table td {
+      text-align: left; padding: 8px 12px; font-size: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .src-table th { color: var(--text-3); text-transform: uppercase; letter-spacing: 1px; font-size: 10px; }
+    .src-table td { color: var(--text-2); }
+    .src-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; vertical-align: middle; }
+    .cat-tag {
+      display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 11px;
+      font-weight: 600; margin: 2px 3px;
+    }
+    .welcome-start {
+      display: block; width: 100%; padding: 14px; border: none; border-radius: 10px;
+      background: var(--brand); color: #fff; font-size: 15px; font-weight: 700;
+      cursor: pointer; margin-top: 28px; transition: opacity 0.2s; letter-spacing: 0.3px;
+    }
+    .welcome-start:hover { opacity: 0.85; }
+
+    /* ── MAP + DASHBOARD ── */
     #viewDiv { position: absolute; inset: 0; z-index: 1; }
     #lensCanvas { position: absolute; inset: 0; z-index: 10; pointer-events: none; }
     #interactionLayer { position: absolute; inset: 0; z-index: 15; cursor: none; }
@@ -73,9 +143,6 @@
       padding: 10px 14px; gap: 8px; pointer-events: none;
     }
     .leg-title { font-size: 9px; color: var(--text-3); text-transform: uppercase; letter-spacing: 1.2px; }
-    .leg-row { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
-    .leg-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-    .leg-label { font-size: 9px; color: var(--text-3); }
     .leg-sub { font-size: 10px; color: var(--text-2); font-weight: 600; margin-bottom: 3px; }
     .leg-note { font-size: 9px; color: var(--text-3); margin-top: 1px; }
     .grad-row { display: flex; gap: 3px; }
@@ -121,10 +188,78 @@
 </head>
 <body>
 
+  <!-- ══════ LOGIN ══════ -->
+  <div class="login-overlay" id="loginOverlay">
+    <div class="login-box">
+      <div class="login-shield">&#x1F6E1;</div>
+      <h2>Corporate Security</h2>
+      <div class="login-sub">Authorized access only</div>
+      <input class="login-field" id="loginUser" type="text" placeholder="Username" autocomplete="off" />
+      <input class="login-field" id="loginPass" type="password" placeholder="Password" />
+      <button class="login-submit" id="loginBtn">Sign In</button>
+      <div class="login-error" id="loginError">Invalid credentials</div>
+    </div>
+  </div>
+
+  <!-- ══════ WELCOME / INTRO ══════ -->
+  <div class="welcome-overlay" id="welcomeOverlay">
+    <div class="welcome-wrap">
+      <h1>LA County Corporate Security Dashboard</h1>
+      <div class="wsub">343,000 incidents from 7 intelligence sources &middot; Aug 2023 &ndash; Feb 2025</div>
+
+      <h3>How to Use</h3>
+      <ul>
+        <li><b>Move your cursor</b> over the map to activate the lens. A radial bar chart will appear showing the breakdown of incidents within the lens radius.</li>
+        <li><b>Scroll to zoom</b> in and out of the map. Click and drag to pan.</li>
+        <li><b>Category filter</b> (bottom bar) &mdash; isolate specific incident types: Armed Violence, Threats, Fire & Hazmat, Infrastructure, or Transport.</li>
+        <li><b>Data source filter</b> (top-right bar) &mdash; filter by intelligence provider.</li>
+        <li><b>Radius selector</b> (left bar) &mdash; adjust the lens area from 1 to 10 miles.</li>
+        <li>The <b>radial bars</b> around the lens show incident counts per category, broken down by year (darker = 2023, lighter = 2025). Longer bars mean more incidents.</li>
+      </ul>
+
+      <h3>Incident Categories</h3>
+      <p>All incidents are classified into 5 categories:</p>
+      <div style="margin:10px 0 16px">
+        <span class="cat-tag" style="background:rgba(239,68,68,0.2);color:#ef4444">Armed Violence</span>
+        <span class="cat-tag" style="background:rgba(249,115,22,0.2);color:#f97316">Threats & Terrorism</span>
+        <span class="cat-tag" style="background:rgba(168,85,247,0.2);color:#a855f7">Fire & Hazmat</span>
+        <span class="cat-tag" style="background:rgba(59,130,246,0.2);color:#3b82f6">Infrastructure</span>
+        <span class="cat-tag" style="background:rgba(34,197,94,0.2);color:#22c55e">Transport & Disruption</span>
+      </div>
+
+      <h3>Data Sources</h3>
+      <p>Incidents are aggregated from 7 intelligence platforms:</p>
+      <table class="src-table">
+        <thead><tr><th>Source</th><th>Coverage</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><span class="src-dot" style="background:#fff"></span>Samdesk</td><td>69.3%</td><td>AI-powered global crisis detection and situational awareness</td></tr>
+          <tr><td><span class="src-dot" style="background:#38bdf8"></span>Dataminr Pulse</td><td>23.6%</td><td>Real-time event and risk detection from public data</td></tr>
+          <tr><td><span class="src-dot" style="background:#fb923c"></span>DataCapable</td><td>3.4%</td><td>Threat intelligence and social media monitoring</td></tr>
+          <tr><td><span class="src-dot" style="background:#4ade80"></span>IRWIN</td><td>2.0%</td><td>Integrated Reporting of Wildland-Fire Information (US wildfire data)</td></tr>
+          <tr><td><span class="src-dot" style="background:#c084fc"></span>Geospark</td><td>1.0%</td><td>AI-driven geospatial intelligence and predictive analytics</td></tr>
+          <tr><td><span class="src-dot" style="background:#facc15"></span>Seerist</td><td>0.4%</td><td>Threat and risk forecasting for global security operations</td></tr>
+          <tr><td><span class="src-dot" style="background:#f472b6"></span>Factal</td><td>0.2%</td><td>Verified breaking news intelligence for enterprise security</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Data Coverage</h3>
+      <ul>
+        <li><b>Area:</b> Los Angeles County, California</li>
+        <li><b>Period:</b> August 2023 &ndash; February 2025</li>
+        <li><b>Total incidents:</b> 343,701 (10,004 sampled for visualization)</li>
+        <li><b>National layer:</b> 11.5M records published on ArcGIS Online</li>
+      </ul>
+
+      <button class="welcome-start" id="welcomeStart">Open Dashboard</button>
+    </div>
+  </div>
+
+  <!-- ══════ LOADING ══════ -->
   <div class="load-screen" id="loader">
     <div class="load-text" id="loadMsg">Loading map...</div>
   </div>
 
+  <!-- ══════ MAP ══════ -->
   <div id="viewDiv"></div>
   <canvas id="lensCanvas"></canvas>
   <div id="interactionLayer"></div>
@@ -190,6 +325,42 @@
   </div>
 
   <script>
+    // ═══════════════════════════════════════
+    // LOGIN GATE
+    // ═══════════════════════════════════════
+    (function() {
+      var overlay = document.getElementById("loginOverlay");
+      var userIn = document.getElementById("loginUser");
+      var passIn = document.getElementById("loginPass");
+      var btn = document.getElementById("loginBtn");
+      var err = document.getElementById("loginError");
+
+      function tryLogin() {
+        if (userIn.value === "portaladmin" && passIn.value === "portaladmin") {
+          err.style.display = "none";
+          overlay.classList.add("off");
+          // Show welcome page
+          document.getElementById("welcomeOverlay").classList.add("vis");
+        } else {
+          err.style.display = "block";
+        }
+      }
+
+      btn.addEventListener("click", tryLogin);
+      passIn.addEventListener("keydown", function(e) { if (e.key === "Enter") tryLogin(); });
+      userIn.addEventListener("keydown", function(e) { if (e.key === "Enter") passIn.focus(); });
+    })();
+
+    // ═══════════════════════════════════════
+    // WELCOME → DASHBOARD
+    // ═══════════════════════════════════════
+    document.getElementById("welcomeStart").addEventListener("click", function() {
+      document.getElementById("welcomeOverlay").classList.add("off");
+    });
+
+    // ═══════════════════════════════════════
+    // MAIN APP
+    // ═══════════════════════════════════════
     require([
       "esri/Map",
       "esri/views/MapView",
@@ -197,9 +368,6 @@
       "esri/layers/WebTileLayer"
     ], function(Map, MapView, Basemap, WebTileLayer) {
 
-      // ═══════════════════════════════════════
-      // CONFIG
-      // ═══════════════════════════════════════
       var M2M = 1609.344;
       var PR_DIM = 1.0, PR_BRI = 2.5;
       var BAR_MAX = 70, BAR_W = 7, RING_GAP = 14;
@@ -212,9 +380,6 @@
       var YRS = [2023, 2024, 2025];
       var YR_C = { 2023:[100,140,210], 2024:[170,200,255], 2025:[220,235,255] };
 
-      // ═══════════════════════════════════════
-      // MAP — show immediately while data loads
-      // ═══════════════════════════════════════
       var darkBasemap = new Basemap({
         baseLayers: [
           new WebTileLayer({
@@ -229,13 +394,10 @@
       var view = new MapView({
         container: "viewDiv", map: map,
         center: [-118.25, 34.05], zoom: 10,
-        constraints: { minZoom: 9, maxZoom: 16 },
+        constraints: { minZoom: 5, maxZoom: 18 },
         navigation: { mouseWheelZoomEnabled: true }
       });
 
-      // ═══════════════════════════════════════
-      // STATE
-      // ═══════════════════════════════════════
       var aCat = -1, aSrc = -1, rMi = 2;
       var mx = -999, my = -999, mOn = false, aR = 0;
       var N = 0;
@@ -245,9 +407,6 @@
 
       function m2px(mi) { return view.resolution ? (mi * M2M) / view.resolution : 140; }
 
-      // ═══════════════════════════════════════
-      // CANVAS
-      // ═══════════════════════════════════════
       var cv = document.getElementById("lensCanvas");
       var cx = cv.getContext("2d");
 
@@ -259,9 +418,6 @@
       }
       addEventListener("resize", rz); rz();
 
-      // ═══════════════════════════════════════
-      // PROJECTION
-      // ═══════════════════════════════════════
       var DEG2RAD = Math.PI / 180;
       var EARTH_R = 6378137;
 
@@ -283,9 +439,6 @@
         }
       }
 
-      // ═══════════════════════════════════════
-      // DRAW
-      // ═══════════════════════════════════════
       function draw() {
         var W = innerWidth, H = innerHeight;
         cx.clearRect(0, 0, W, H);
@@ -304,7 +457,7 @@
           cx.restore();
         }
 
-        var inCatYr = new Int32Array(15); // 5 cats x 3 years
+        var inCatYr = new Int32Array(15);
         var totalIn = 0;
 
         for (var c = 0; c < 5; c++) {
@@ -360,11 +513,7 @@
         requestAnimationFrame(draw);
       }
 
-      // ═══════════════════════════════════════
-      // RADIAL BARS
-      // ═══════════════════════════════════════
       function radBars(px, py, R, cy) {
-        // cy = Int32Array[15]: 5 cats x 3 years
         var ac = [];
         for (var c = 0; c < 5; c++) {
           if (aCat >= 0 && c !== aCat) continue;
@@ -419,20 +568,17 @@
             }
           }
 
-          // Category label
           var lr2 = bs + BAR_MAX + 24;
           cx.font = "700 10px Inter,system-ui";
           cx.fillStyle = "rgba(" + cc[0] + "," + cc[1] + "," + cc[2] + ",0.85)";
           cx.textAlign = "center"; cx.textBaseline = "middle";
           cx.fillText(CAT_L[ck], px + Math.cos(sm) * lr2, py + Math.sin(sm) * lr2);
 
-          // Category total
           var ct = 0;
           for (var y2 = 0; y2 < 3; y2++) ct += cy[ck * 3 + y2];
           cx.font = "500 9px Inter,system-ui"; cx.fillStyle = "rgba(255,255,255,0.30)";
           cx.fillText(ct, px + Math.cos(sm) * (lr2 + 14), py + Math.sin(sm) * (lr2 + 14));
 
-          // Separator
           if (ci < ac.length - 1) {
             var sa = se + cp / 2;
             cx.strokeStyle = "rgba(255,255,255,0.05)"; cx.lineWidth = 1;
@@ -443,7 +589,6 @@
           }
         }
 
-        // Year legend inside lens
         var ly2 = py + R * 0.45, tw = nY * 40;
         var x = px - tw / 2;
         for (var yi2 = 0; yi2 < nY; yi2++) {
@@ -474,7 +619,7 @@
       }
 
       // ═══════════════════════════════════════
-      // INTERACTION
+      // INTERACTION — zoom + pan passthrough
       // ═══════════════════════════════════════
       var il = document.getElementById("interactionLayer");
 
@@ -484,18 +629,32 @@
       });
       il.addEventListener("mouseleave", function() { mOn = false; });
 
+      // Wheel zoom passthrough
       il.addEventListener("wheel", function(e) {
+        e.preventDefault();
         document.getElementById("viewDiv").dispatchEvent(new WheelEvent("wheel", {
           clientX: e.clientX, clientY: e.clientY,
           deltaX: e.deltaX, deltaY: e.deltaY, deltaMode: e.deltaMode,
           bubbles: true, cancelable: true
         }));
-      });
+      }, { passive: false });
 
+      // Drag pan passthrough
       var drag = false;
-      il.addEventListener("mousedown", function() { drag = true; il.style.pointerEvents = "none"; });
-      document.addEventListener("mouseup", function() { if (drag) { drag = false; il.style.pointerEvents = "auto"; } });
-      document.addEventListener("mousemove", function(e) { if (drag) { mx = e.clientX; my = e.clientY; } });
+      il.addEventListener("mousedown", function(e) {
+        drag = true;
+        il.style.pointerEvents = "none";
+        // Forward the mousedown to the map so it starts panning
+        document.getElementById("viewDiv").dispatchEvent(new MouseEvent("mousedown", {
+          clientX: e.clientX, clientY: e.clientY, bubbles: true, cancelable: true
+        }));
+      });
+      document.addEventListener("mouseup", function() {
+        if (drag) { drag = false; il.style.pointerEvents = "auto"; }
+      });
+      document.addEventListener("mousemove", function(e) {
+        if (drag) { mx = e.clientX; my = e.clientY; }
+      });
 
       // ═══════════════════════════════════════
       // BUTTON GROUPS
@@ -515,16 +674,14 @@
       grp("radBar", function(v) { rMi = parseInt(v); });
 
       // ═══════════════════════════════════════
-      // INIT — map shows first, data loads in parallel
+      // INIT
       // ═══════════════════════════════════════
       view.when(function() {
         view.ui.components = [];
 
-        // Map is visible now — start render loop immediately
         requestAnimationFrame(draw);
         document.getElementById("loadMsg").textContent = "Loading incidents...";
 
-        // Data was already fetching since page load (window._dp)
         window._dp.then(function(buf) {
           var dv = new DataView(buf);
           N = dv.getUint32(0, true);
@@ -541,7 +698,6 @@
           srcArr = new Uint8Array(buf, srcOff, N);
           yrArr = new Uint8Array(buf, yrOff, N);
 
-          // Pre-compute Web Mercator coordinates
           wmxArr = new Float32Array(N);
           wmyArr = new Float32Array(N);
           for (var i = 0; i < N; i++) {
