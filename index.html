@@ -76,7 +76,12 @@
     .leg-row { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
     .leg-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
     .leg-label { font-size: 9px; color: var(--text-3); }
+    .leg-sub { font-size: 10px; color: var(--text-2); font-weight: 600; margin-bottom: 3px; }
     .leg-note { font-size: 9px; color: var(--text-3); margin-top: 1px; }
+    .grad-row { display: flex; gap: 3px; }
+    .grad-bar { flex: 1; height: 7px; border-radius: 4px; }
+    .grad-labels { display: flex; justify-content: space-between; }
+    .grad-labels span { font-size: 9px; color: var(--text-3); }
 
     .lens-tt {
       position: absolute; z-index: 25; pointer-events: none;
@@ -159,20 +164,21 @@
   </div>
 
   <div class="glass legend">
-    <div class="leg-title">Radial Bar Chart</div>
-    <div class="leg-note">Each <b style="color:var(--text-2)">sector</b> = incident category</div>
-    <div class="leg-note">Each <b style="color:var(--text-2)">bar</b> = one data source</div>
-    <div class="leg-note"><b style="color:var(--text-2)">Longer</b> bar = more incidents</div>
-    <div style="margin-top:4px">
-      <div class="leg-title">Bar Color</div>
-      <div class="leg-note">Category color blended with source tint</div>
-      <div class="leg-row" style="margin-top:4px"><div class="leg-dot" style="background:#ef4444"></div><div class="leg-label">Armed Violence</div></div>
-      <div class="leg-row"><div class="leg-dot" style="background:#f97316"></div><div class="leg-label">Threats & Terrorism</div></div>
-      <div class="leg-row"><div class="leg-dot" style="background:#a855f7"></div><div class="leg-label">Fire & Hazmat</div></div>
-      <div class="leg-row"><div class="leg-dot" style="background:#3b82f6"></div><div class="leg-label">Infrastructure</div></div>
-      <div class="leg-row"><div class="leg-dot" style="background:#22c55e"></div><div class="leg-label">Transport & Disruption</div></div>
+    <div class="leg-title">Bar Chart Legend</div>
+    <div>
+      <div class="leg-sub">Year (shade)</div>
+      <div class="grad-row">
+        <div class="grad-bar" style="background:rgba(100,140,210,0.55)"></div>
+        <div class="grad-bar" style="background:rgba(170,200,255,0.75)"></div>
+        <div class="grad-bar" style="background:rgba(220,235,255,0.92)"></div>
+      </div>
+      <div class="grad-labels"><span>2023</span><span>2024</span><span>2025</span></div>
+      <div class="leg-note">Darker = older &middot; Lighter = newer</div>
     </div>
-    <div class="leg-note" style="margin-top:4px">Lighter shade = source tint applied</div>
+    <div>
+      <div class="leg-sub">Bar length</div>
+      <div class="leg-note">Longer = more incidents</div>
+    </div>
   </div>
 
   <div class="instr" id="instr">Move your cursor to explore the map</div>
@@ -203,11 +209,8 @@
       ];
       var CAT_L = ["Armed Violence","Threats","Fire & Hazmat","Infrastructure","Transport"];
 
-      var SRC_C = [
-        [255,255,255], [56,189,248], [251,146,60], [74,222,128],
-        [192,132,252], [250,204,21], [244,114,182]
-      ];
-      var SRC_L = ["Samdesk","Dataminr","DataCapable","IRWIN","Geospark","Seerist","Factal"];
+      var YRS = [2023, 2024, 2025];
+      var YR_C = { 2023:[100,140,210], 2024:[170,200,255], 2025:[220,235,255] };
 
       // ═══════════════════════════════════════
       // MAP — show immediately while data loads
@@ -236,7 +239,7 @@
       var aCat = -1, aSrc = -1, rMi = 2;
       var mx = -999, my = -999, mOn = false, aR = 0;
       var N = 0;
-      var lonArr, latArr, catArr, srcArr;
+      var lonArr, latArr, catArr, srcArr, yrArr;
       var wmxArr, wmyArr, sxArr, syArr, visArr;
       var dataReady = false;
 
@@ -301,7 +304,7 @@
           cx.restore();
         }
 
-        var inCatSrc = new Int32Array(35);
+        var inCatYr = new Int32Array(15); // 5 cats x 3 years
         var totalIn = 0;
 
         for (var c = 0; c < 5; c++) {
@@ -332,7 +335,7 @@
             if (dx * dx + dy * dy >= R2) continue;
             cx.moveTo(sxArr[i] + PR_BRI, syArr[i]);
             cx.arc(sxArr[i], syArr[i], PR_BRI, 0, Math.PI * 2);
-            inCatSrc[c * 7 + srcArr[i]]++;
+            inCatYr[c * 3 + yrArr[i]]++;
             totalIn++;
           }
           cx.fill();
@@ -348,7 +351,7 @@
           cx.beginPath(); cx.arc(lx, ly, R + 8, 0, Math.PI * 2);
           cx.arc(lx, ly, Math.max(0, R - 2), 0, Math.PI * 2, true); cx.fill();
 
-          radBars(lx, ly, R, inCatSrc);
+          radBars(lx, ly, R, inCatYr);
           tooltip(lx, ly, R, totalIn);
         } else {
           document.getElementById("ltt").classList.remove("vis");
@@ -360,33 +363,25 @@
       // ═══════════════════════════════════════
       // RADIAL BARS
       // ═══════════════════════════════════════
-      function radBars(px, py, R, cs) {
+      function radBars(px, py, R, cy) {
+        // cy = Int32Array[15]: 5 cats x 3 years
         var ac = [];
         for (var c = 0; c < 5; c++) {
           if (aCat >= 0 && c !== aCat) continue;
           var tot = 0;
-          for (var s = 0; s < 7; s++) tot += cs[c * 7 + s];
+          for (var y = 0; y < 3; y++) tot += cy[c * 3 + y];
           if (tot > 0) ac.push(c);
         }
         if (!ac.length) return;
 
         var gm = 0;
-        for (var i = 0; i < 35; i++) if (cs[i] > gm) gm = cs[i];
+        for (var i = 0; i < 15; i++) if (cy[i] > gm) gm = cy[i];
         if (!gm) return;
 
         var ca = Math.PI * 2 / ac.length;
         var cp = 0.08;
+        var nY = 3;
         var bs = R + RING_GAP;
-
-        var asSrcs = [];
-        for (var s = 0; s < 7; s++) {
-          if (aSrc >= 0 && s !== aSrc) continue;
-          var has = false;
-          for (var c2 = 0; c2 < 5; c2++) if (cs[c2 * 7 + s] > 0) { has = true; break; }
-          if (has) asSrcs.push(s);
-        }
-        var nS = asSrcs.length;
-        if (!nS) return;
 
         for (var ci = 0; ci < ac.length; ci++) {
           var ck = ac[ci];
@@ -395,22 +390,21 @@
           var se = ss + ca - cp;
           var sm = (ss + se) / 2;
 
-          for (var sii = 0; sii < asSrcs.length; sii++) {
-            var si = asSrcs[sii];
-            var cnt = cs[ck * 7 + si];
+          for (var yi = 0; yi < nY; yi++) {
+            var cnt = cy[ck * 3 + yi];
             if (!cnt) continue;
             var bl = (cnt / gm) * BAR_MAX;
-            var sc = SRC_C[si];
-            var ao = ((sii - (nS - 1) / 2) / Math.max(nS, 1)) * (ca - cp) * 0.6;
+            var yc = YR_C[YRS[yi]];
+            var ao = ((yi - (nY - 1) / 2) / nY) * (ca - cp) * 0.6;
             var ba = sm + ao;
 
             var x1 = px + Math.cos(ba) * bs, y1 = py + Math.sin(ba) * bs;
             var x2 = px + Math.cos(ba) * (bs + bl), y2 = py + Math.sin(ba) * (bs + bl);
 
-            var r = Math.round(cc[0] * 0.4 + sc[0] * 0.6);
-            var g2 = Math.round(cc[1] * 0.4 + sc[1] * 0.6);
-            var b = Math.round(cc[2] * 0.4 + sc[2] * 0.6);
-            var a = 0.5 + (sii / Math.max(nS, 1)) * 0.4;
+            var r = Math.round(cc[0] * 0.4 + yc[0] * 0.6);
+            var g2 = Math.round(cc[1] * 0.4 + yc[1] * 0.6);
+            var b = Math.round(cc[2] * 0.4 + yc[2] * 0.6);
+            var a = 0.5 + (yi / nY) * 0.4;
 
             cx.strokeStyle = "rgba(" + r + "," + g2 + "," + b + "," + a + ")";
             cx.lineWidth = BAR_W; cx.lineCap = "round";
@@ -425,17 +419,20 @@
             }
           }
 
+          // Category label
           var lr2 = bs + BAR_MAX + 24;
           cx.font = "700 10px Inter,system-ui";
           cx.fillStyle = "rgba(" + cc[0] + "," + cc[1] + "," + cc[2] + ",0.85)";
           cx.textAlign = "center"; cx.textBaseline = "middle";
           cx.fillText(CAT_L[ck], px + Math.cos(sm) * lr2, py + Math.sin(sm) * lr2);
 
+          // Category total
           var ct = 0;
-          for (var s2 = 0; s2 < 7; s2++) ct += cs[ck * 7 + s2];
+          for (var y2 = 0; y2 < 3; y2++) ct += cy[ck * 3 + y2];
           cx.font = "500 9px Inter,system-ui"; cx.fillStyle = "rgba(255,255,255,0.30)";
           cx.fillText(ct, px + Math.cos(sm) * (lr2 + 14), py + Math.sin(sm) * (lr2 + 14));
 
+          // Separator
           if (ci < ac.length - 1) {
             var sa = se + cp / 2;
             cx.strokeStyle = "rgba(255,255,255,0.05)"; cx.lineWidth = 1;
@@ -446,24 +443,17 @@
           }
         }
 
-        if (aSrc < 0 && nS > 1) {
-          var ly2 = py + R * 0.45;
-          var rows = nS > 4 ? 2 : 1;
-          var perRow = Math.ceil(nS / rows);
-          for (var row = 0; row < rows; row++) {
-            var count = Math.min(perRow, nS - row * perRow);
-            var rx = px - (count * 55) / 2;
-            for (var j = row * perRow; j < row * perRow + count; j++) {
-              var si2 = asSrcs[j];
-              var sc2 = SRC_C[si2];
-              cx.fillStyle = "rgba(" + sc2[0] + "," + sc2[1] + "," + sc2[2] + ",0.7)";
-              cx.beginPath(); cx.roundRect(rx, ly2 + row * 14, 8, 4, 2); cx.fill();
-              cx.font = "500 8px Inter,system-ui"; cx.fillStyle = "rgba(255,255,255,0.35)";
-              cx.textAlign = "left"; cx.textBaseline = "middle";
-              cx.fillText(SRC_L[si2].substring(0, 6), rx + 11, ly2 + 2 + row * 14);
-              rx += 55;
-            }
-          }
+        // Year legend inside lens
+        var ly2 = py + R * 0.45, tw = nY * 40;
+        var x = px - tw / 2;
+        for (var yi2 = 0; yi2 < nY; yi2++) {
+          var yc2 = YR_C[YRS[yi2]];
+          cx.fillStyle = "rgba(" + yc2[0] + "," + yc2[1] + "," + yc2[2] + ",0.7)";
+          cx.beginPath(); cx.roundRect(x, ly2, 12, 4, 2); cx.fill();
+          cx.font = "500 9px Inter,system-ui"; cx.fillStyle = "rgba(255,255,255,0.35)";
+          cx.textAlign = "left"; cx.textBaseline = "middle";
+          cx.fillText(YRS[yi2], x + 15, ly2 + 2);
+          x += 40;
         }
       }
 
@@ -543,11 +533,13 @@
           var latOff = lonOff + N * 4;
           var catOff = latOff + N * 4;
           var srcOff = catOff + N;
+          var yrOff = srcOff + N;
 
           lonArr = new Float32Array(buf, lonOff, N);
           latArr = new Float32Array(buf, latOff, N);
           catArr = new Uint8Array(buf, catOff, N);
           srcArr = new Uint8Array(buf, srcOff, N);
+          yrArr = new Uint8Array(buf, yrOff, N);
 
           // Pre-compute Web Mercator coordinates
           wmxArr = new Float32Array(N);
