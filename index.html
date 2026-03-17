@@ -159,15 +159,20 @@
   </div>
 
   <div class="glass legend">
-    <div class="leg-title">Source Legend</div>
-    <div class="leg-row"><div class="leg-dot" style="background:#fff"></div><div class="leg-label">Samdesk</div></div>
-    <div class="leg-row"><div class="leg-dot" style="background:#38bdf8"></div><div class="leg-label">Dataminr Pulse</div></div>
-    <div class="leg-row"><div class="leg-dot" style="background:#fb923c"></div><div class="leg-label">DataCapable</div></div>
-    <div class="leg-row"><div class="leg-dot" style="background:#4ade80"></div><div class="leg-label">IRWIN</div></div>
-    <div class="leg-row"><div class="leg-dot" style="background:#c084fc"></div><div class="leg-label">Geospark</div></div>
-    <div class="leg-row"><div class="leg-dot" style="background:#facc15"></div><div class="leg-label">Seerist</div></div>
-    <div class="leg-row"><div class="leg-dot" style="background:#f472b6"></div><div class="leg-label">Factal</div></div>
-    <div class="leg-note" style="margin-top:6px">Bar length = incident count</div>
+    <div class="leg-title">Radial Bar Chart</div>
+    <div class="leg-note">Each <b style="color:var(--text-2)">sector</b> = incident category</div>
+    <div class="leg-note">Each <b style="color:var(--text-2)">bar</b> = one data source</div>
+    <div class="leg-note"><b style="color:var(--text-2)">Longer</b> bar = more incidents</div>
+    <div style="margin-top:4px">
+      <div class="leg-title">Bar Color</div>
+      <div class="leg-note">Category color blended with source tint</div>
+      <div class="leg-row" style="margin-top:4px"><div class="leg-dot" style="background:#ef4444"></div><div class="leg-label">Armed Violence</div></div>
+      <div class="leg-row"><div class="leg-dot" style="background:#f97316"></div><div class="leg-label">Threats & Terrorism</div></div>
+      <div class="leg-row"><div class="leg-dot" style="background:#a855f7"></div><div class="leg-label">Fire & Hazmat</div></div>
+      <div class="leg-row"><div class="leg-dot" style="background:#3b82f6"></div><div class="leg-label">Infrastructure</div></div>
+      <div class="leg-row"><div class="leg-dot" style="background:#22c55e"></div><div class="leg-label">Transport & Disruption</div></div>
+    </div>
+    <div class="leg-note" style="margin-top:4px">Lighter shade = source tint applied</div>
   </div>
 
   <div class="instr" id="instr">Move your cursor to explore the map</div>
